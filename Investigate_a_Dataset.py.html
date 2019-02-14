@@ -1,0 +1,963 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# <a id='intro'></a>
+# ## Introduction
+# 
+# 
+# ### Dataset
+# This data set contains information about 10,000 movies collected from The Movie Database (TMDb) including user ratings and revenue. This data set allows me to investigates which factors have a influence on the sucess of a movie in terms of revenue and rating.
+# 
+# 
+# ### Explore Dataset- Questions
+# 
+# #### It would be interesting to investige if one could predict the success of a movie in terms of revenue and rating. Are there factors that could predict the success of a movie?
+# 
+# #####  Revenue (Dependend Variable)
+# 1. What kinds of properties are associated with movies that have high revenues: Does the budget, the release month, the runtime, the production company or the rating (does high rated movies generate more income?) have a postive effect on the revenue? 
+# 2. Does the genre effects the revenue? Which genre generates the most revenue?
+# 
+# ##### Rating (Dependend Variable)
+# 3. What kind of properties are asccosiated with movies that have high ratings: Does the budget, the release month, the runtime or the revenue have a positive effect on the rating?
+# 4. Does the genre or the production company effects the rating? Which genre/production company generates the best ratings ?
+# 
+# 
+# #### Furthermore, It would be also interessting to further investigate the rating of the movies 
+# 1. Which year has the highest average in ratings? Does the ratings have changed over time: Have movies become better worse?
+# 
+# 
+
+# In[213]:
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# <a id='wrangling'></a>
+# ## Data Wrangling
+# 
+# 
+# ### General Properties
+# In the first step, I will have a general look at the dataset and I will also decide which columns I won't need or I can't use
+# for my planned investigation. This will also make the cleaning process easier.
+
+# 
+# 
+# 
+# 
+# 
+# 
+# # Project: TMDb movie data Analysis
+# 
+# ## Table of Contents
+# <ul>
+# <li><a href="#intro">Introduction</a></li>
+# <li><a href="#wrangling">Data Wrangling</a></li>
+# <li><a href="#eda">Exploratory Data Analysis</a></li>
+# <li><a href="#conclusions">Conclusions</a></li>
+# 
+# </ul>
+
+# In[214]:
+
+
+df = pd.read_csv('tmdb-movies.csv')
+df.head(1)
+
+
+# In[215]:
+
+
+df.shape
+
+
+# In the next step I need to determine which columns I don't need for my investigation and can therefore be dropped from the dataset.
+# I don't need the following columns for my investigation: homepage, overview, tagline, keywords and vote_count.
+# 
+# I also decided to drop the budget and revenue column and use the "_adj columns". By using the budget and revenue columns, which takes the inflation into account, makes the data resp. my findings more accurate.
+
+# In[216]:
+
+
+# dropping the columns homepage, overview, tagline, keywords vote_count, budget and revenue from the dataframe
+df.drop(['homepage','overview', 'tagline','vote_count','keywords','budget', 'revenue'], axis=1, inplace=True)
+
+
+# I need further information about the cast and the director columns and if its possible to use the data for my investigation (it would be interesting to also see their influence on revenue and budget). If the time span of the data is too long, it makes no sense to analyze effects of the cast or the director on revenue, budget or rating since a specific actor or director wasn't active for a specific time.
+
+# In[217]:
+
+
+# identifying the time span of release year and counting the values
+df.release_year.describe()
+
+
+# Due to the long time span (53 years), I decided to drop the cast and director columns since the results wouldn't give any accurate answers
+
+# In[218]:
+
+
+# dropping the columns director and cast
+df.drop(['cast', 'director'], axis=1, inplace=True)
+
+
+# Now I will double check if my operations were succesful
+
+# In[219]:
+
+
+df.shape
+
+
+# In[220]:
+
+
+df.head(1)
+
+
+# ### Data Cleaning
+# In this part of the investigation I will have a closer look the dataset in terms of duplicates, null values and
+# datatypes
+
+# 1. Check for duplicates and drop duplicates in the dataset
+
+# In[221]:
+
+
+# identify number of duplicates in the data set
+df.duplicated().sum()
+
+
+# In[222]:
+
+
+# the dataset has 1 duplicate which I will drop from the dataset
+df.drop_duplicates(inplace=True)
+
+
+# In[223]:
+
+
+# identify number of duplicates in the data set after dropping null values in order to doublecheck my operation
+df.duplicated().sum()
+
+
+# 2. Check the dataset for Null values and drop them from the data
+# 
+
+# In[224]:
+
+
+# identify number of null values in the data set
+df.isnull().sum()
+
+
+# In[225]:
+
+
+# dropping the null values from the data set
+df.dropna(inplace=True)
+
+
+# Now I will have a quick look at the data to see how many data I have left after this operation
+# 
+
+# In[226]:
+
+
+df.shape
+
+
+# 3. Now I will discuss the datatypes and adress any problems that need to be fixed and then perform those cleaning steps
+
+# In[227]:
+
+
+df.dtypes
+
+
+# In[228]:
+
+
+# closer inspection of the object imdb_id
+type(df['imdb_id'][0])
+
+
+# In[229]:
+
+
+# closer inspection of the object genres
+type(df['genres'][0])
+
+
+# In[230]:
+
+
+# closer inspection of the object original title
+type(df['original_title'][0])
+
+
+# In[231]:
+
+
+# closer inspection of the object production_companies
+type(df['production_companies'][0])
+
+
+# In[232]:
+
+
+# closer inspection of the object release_date
+type(df['release_date'][0])
+
+
+# All inspected objects are strings
+
+# Since I just need the month and year for my investigation, I will extrect the month from the column and save it as integer
+
+# In[233]:
+
+
+# creating a new variable called release_month, in which I split the release date between the "/" and just return the
+# the first "letter" of the string (which is the month) and save it as a integer
+release_month = df.release_date.str.split('/').str.get(0).astype(int)
+
+
+# In[234]:
+
+
+# Now I add release_month as a new column to the dataframe and drop the column release_date from the dataframe
+df['release_month'] = release_month
+df.drop('release_date', axis= 1, inplace=True)
+
+
+# Then I will double check my operations
+
+# In[235]:
+
+
+# Then I will double check my operations by displaying the first row of the dataframe and have a look at the datatypes
+df.head(1)
+
+
+# In[236]:
+
+
+df.dtypes
+
+
+# In the next steps I will performe the follwoing operations
+# 
+# 1. convert budget and revenue to integer to make it more easier to plot them later & rename them (I would like to have them without the "_"  -suffix)
+# 2. split genres and production_companies in order to access all information in the column
+
+# 1. converting & renaming budget, revenue
+
+# In[237]:
+
+
+# converting budget_adj & revenue_adj into integer 
+df.budget_adj = df.budget_adj.astype(int)
+df.revenue_adj = df.revenue_adj.astype(int)
+
+
+# In[238]:
+
+
+# renaming the variables budget_adj & revenue_adj to budget and revenue
+df.rename(columns={'budget_adj' : 'budget', 'revenue_adj' : 'revenue'}, inplace=True)
+
+
+# Double check the operation
+
+# In[239]:
+
+
+df.info()
+
+
+# In[240]:
+
+
+df.head(1)
+
+
+# In[241]:
+
+
+# now I will have a closer look the columns budget and revenue
+df.budget.describe()
+
+
+# In[242]:
+
+
+df.revenue.describe()
+
+
+# One can see that there are movies that have a budget or revenue 0$ which sounds not really logical.
+# These rows needs to be dropped from the data set. So I decided to drop values = 0.0 from the dataframe (not just from revenue and budget, but also from runtime)
+
+# In[243]:
+
+
+# in the first step I will replace all 0 values with NaN
+df.replace(0, np.nan, inplace=True)
+
+
+# In[244]:
+
+
+# checking for new null values that the above operations has created
+df.isnull().sum()
+
+
+# In[245]:
+
+
+# dropping the null values from the data set which I created by just including values >0
+df.dropna(axis=0, inplace=True)
+
+
+# In[246]:
+
+
+df.info()
+
+
+# The dataframe contains now 3807 rows with non-null values
+
+# 2. split genres & production_companies
+
+# In[247]:
+
+
+# creating new datafram by splitting the variable genre by '|' and saving every value of each split in a own column
+df_genres_split = df.genres.str.split('|', expand=True)
+df_genres_split.head()
+
+
+# In[248]:
+
+
+# creating new dataframe by splitting the variable production_companies by '|' and saving every value of each split
+# in a own column.
+df_production_companies_split = df.production_companies.str.split('|', expand=True)
+df_production_companies_split.head()
+
+
+# By looking at the first 5 coloumns, I can see that the split columns have null values.
+# I need to know how many null values they have exactly in order to determine if how to use the data
+
+# In[249]:
+
+
+#identify number of null values in the data set df_production_companies_split
+df_production_companies_split.isnull().sum()
+
+
+# In[250]:
+
+
+#identify number of null values in the data set df_genres_split
+df_genres_split.isnull().sum()
+
+
+# After spliting the genres and the production_companies columns, one can see that both columns have a lot of null values which would make my dataset really small if I would delete all null values. Furthtermore, one can assume that the head genre and the head production company of every movie, will be named first in each list. Therefore, I decided to just include the first value of each list in the dataframe 
+
+# Including the first column of df_genres_split & df_production_companies_split in the datafram df
+
+# In[251]:
+
+
+# adding the first column of df_genres_split & df_production_companies_split in the datafram df
+df['new_genre']= df_genres_split[0]
+df['new_production_companies']= df_production_companies_split[0]
+
+
+# double check if the operation was succesfull
+
+# In[252]:
+
+
+df.head(1)
+
+
+# In[253]:
+
+
+# checking for null values in the dataframe
+df.isnull().sum()
+
+
+# now I'm droppin the original columns & # double check if the operation was succesfull
+
+# In[254]:
+
+
+# dropping the columns 'genres', 'production_companies' from the dataframe
+df.drop(['genres', 'production_companies'], axis=1, inplace=True)
+
+
+# In[255]:
+
+
+df.head(1)
+
+
+# In[256]:
+
+
+df.dtypes
+
+
+# In[257]:
+
+
+# closer inspection of the object new_genre
+type(df['new_genre'][0])
+
+
+# In[258]:
+
+
+# closer inspection of the object new_production_companies
+type(df['new_production_companies'][0])
+
+
+# This was the last in the data wrangling process. Now the dataset is ready for the investigation
+
+# ## Exploratory Data Analysis
+# 
+# 
+
+# 
+# 
+# ### Are there factors that could predict the success of a movie?
+
+# #### 1.What kinds of properties are associated with movies that have high revenues: Does the budget, the release month, the runtime, the production company of the rating, (does high rated movies generate more income?) have a postive effect on the revenue?
+
+# ### Histogramm for various features- for an first overview of the factors
+# 
+# Source for interpretation: https://www.dummies.com/education/math/statistics/how-to-interpret-the-shape-of-statistical-data-in-a-histogram/; http://asq.org/learn-about-quality/data-collection-analysis-tools/overview/histogram2.html
+
+# In[259]:
+
+
+# creating the subplot for the following columns: budget, revenue, runtime, release month, genre
+
+fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(18,30))
+ax0, ax1, ax2, ax3, ax4, ax5 = axes.flatten()
+n_bins = 6
+plt.setp(axes.flat, ylabel='Count')
+
+ax0.hist(df.budget,n_bins)
+ax0.set(title = 'Distributions Budget', xlabel='Budget')
+
+ax1.hist(df.revenue,n_bins)
+ax1.set(title = 'Distributions Revenue', xlabel='Revenue')
+
+ax2.hist(df.runtime, n_bins)
+ax2.set(title = 'Distributions Runtime', xlabel='Runtime')
+
+ax3.hist(df.vote_average, n_bins)
+ax3.set(title = 'Distributions Average Vote', xlabel='Average Vote')
+
+ax4.hist(df.release_month, n_bins)
+ax4.set(title = 'Distributions Release Month', xlabel='Release Month')
+
+ax5.hist(df.new_genre, n_bins)
+ax5.set(title = 'Distributions Movie Genre', xlabel='Movie Genre')
+
+fig.tight_layout();
+
+
+# The Histograms show that data for revenue, budget and runtime is right-skewed while the data for the release month and the movie genre have a multimodal distribution.
+# 
+# The date for the rating is normal distributed. (But other distributions can look like a normal distribution. You would need statistical calculations to prove a normal distribution (source: http://asq.org/learn-about-quality/data-collection-analysis-tools/overview/histogram2.html)
+
+# The histogram shows a multimodal distribution for the genre
+
+# ### Scatterplots of revenue against various Features
+# In order see investigate if there corrletion between various factors and revenue, I will plot them against revenue and I will also calclutate the correlation coefficient to if there is a correlation/linear relation and if the correlation is negative or postive (Source for the analyzis: https://www.dummies.com/education/math/statistics/how-to-interpret-a-correlation-coefficient-r/)
+
+# In[260]:
+
+
+# plotting the following columns/factors against revenue: budget, runtime, release month
+
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12,10))
+ax0, ax1, ax2, ax3= axes.flatten()
+n_bins = 6
+plt.setp(axes.flat, ylabel='Revenue')
+
+ax0.scatter(df.budget, df.revenue, n_bins)
+ax0.set(title = 'Correlation of Buget and Revenue', xlabel='Budget')
+
+ax1.scatter(df.runtime, df.revenue, n_bins)
+ax1.set(title = 'Correlation of Runtime and Revenue', xlabel='Runtime')
+
+ax2.scatter(df.vote_average, df.revenue, n_bins)
+ax2.set(title = 'Correlation of Average Rating and Revenue', xlabel='Average Rating')
+
+ax3.scatter(df.release_month, df.revenue, n_bins)
+ax3.set(title = 'Correlation of release_month and Revenue', xlabel='Release Month')
+
+
+fig.tight_layout();
+
+
+# Now I will also calculate the correlation coefficient to support the visuals of the scatterplots
+
+# In[261]:
+
+
+# Correlation Coffiecent budget/revenue
+df['budget'].corr(df['revenue'])
+
+
+# In[262]:
+
+
+# Correlation Coffiecent budget/runtime
+df['runtime'].corr(df['revenue'])
+
+
+# In[263]:
+
+
+# Correlation Coffiecent budget/average rating
+df['vote_average'].corr(df['revenue'])
+
+
+# In[264]:
+
+
+# Correlation Coffiecent budget/release month
+df['release_month'].corr(df['revenue'])
+
+
+# #### Now I will interpretate the findings and if needed further investigate the data
+
+# ##### Correlation of Budget and Revenue
+# The scatterplot shows moderate uphill positive relation between the budget of a movie and its revenue. This is supported by the correlation cofficient (0.56) for the two factors which also shows a moderate postive correlation.
+
+# ##### Correlation of Runtime and Revenue
+# The scatterplot shows no linear relation between the runtime of a movie and its revenue. This is supported by the correlation cofficient (0.27) for the two factors which also shows no linear relation.
+# However, it would be interesting to see which runtime generates the highest average revenue
+
+# In[265]:
+
+
+# max of average revenue grouped by the runtime
+df.groupby('runtime').revenue.mean().max()
+
+
+# In[266]:
+
+
+# runtime of max value of the average revenue
+df.groupby('runtime').revenue.mean().idxmax()
+
+
+# In[267]:
+
+
+df[df.runtime == 194]
+
+
+# Since there is just one movie that has a runtime of 194 ('Titanic'), the result are not really valueable.
+# I will also deivide the runtime into two groups: high runtime; low runtime. Maybe this will give me a better picture how the runtime effects the revenue
+
+# In[268]:
+
+
+df.runtime.describe()
+
+
+# In[269]:
+
+
+# dividing runtime into two dataframes: high runtime and low runtime
+df_runtime_low = df[df.runtime < 102]
+df_runtime_high = df[df.runtime >= 102]
+
+
+# In[270]:
+
+
+# average revenue of runtime in dataframe low runtime
+low = df_runtime_low.revenue.mean()
+low
+
+
+# In[271]:
+
+
+# average revenue of runtime in dataframe low runtime
+high = df_runtime_high.revenue.mean()
+high
+
+
+# In[272]:
+
+
+locations = [1, 2]
+heights = [low, high]
+labels = ['Low', 'High']
+plt.bar(locations, heights, tick_label=labels)
+plt.title('Average Revenue by Runtime')
+plt.xlabel('Runtime')
+plt.ylabel('Average Revenue');
+
+
+# The results show really clear that movie with a runtime longer then 102 generates in average more revenue
+
+# ##### Correlation of Rating and Revenue
+# The scatterplot shows no linear relation between the rating of a movie and its revenue. This is supported by the correlation cofficient (0.26) for the two factors which also shows no linear relation.
+
+# ##### Correlation of Release Month and Revenue
+# The scatterplot shows no linear relation between the release month of a movie and its revenue. This is supported by the correlation cofficient (0.05) for the two factors which also shows no linear relation.
+# However, it would be interesttin to see which month generates the most average revenue
+
+# In[280]:
+
+
+# average revenue grouped by month
+month_average_mean = df.groupby('release_month').revenue.mean()
+month_average_mean
+
+
+# In[274]:
+
+
+# plotting average revenue grouped by month in a bar chart
+month_average_mean.plot(kind="bar")
+plt.title("Release month and revenue")
+plt.xlabel("Release Month")
+plt.ylabel("Average Revenue");
+
+
+# The findings shows that the release of the move in June generates the highest revenue and that the release in September generates the lowest revenue.
+
+# #### Does the genre effects the revenue? Which genre generates the most revenue?
+
+# In[300]:
+
+
+# average revenue grouped by genre
+genre_revenue_mean = df.groupby('new_genre').revenue.mean().round()
+genre_revenue_mean.idxmax()
+
+
+# In[302]:
+
+
+genre_revenue_mean.idxmin()
+
+
+# In[282]:
+
+
+# plotting average revenue grouped by genre in a bar chart
+genre_revenue_mean.plot(kind='bar', sort_columns=True)
+plt.title('Average Revenue Per Genre')
+plt.xlabel('Genre')
+plt.ylabel('Revenue');
+
+
+# The findings shows that Adventure Movies generate the highest revenue and that Documentary Movies generate the lowest revenue.
+
+# #### Which Production Company generates the most revenue?
+
+# In[303]:
+
+
+# counting of productions companies in the dataframe
+amount_productions = df.new_production_companies.value_counts()
+amount_productions.describe()
+
+
+# In[304]:
+
+
+# average revenue grouped by production companies
+max_revenue = df.groupby('new_production_companies').revenue.mean()
+max_revenue.idxmax()
+
+
+# In[285]:
+
+
+df[df.new_production_companies == 'Robert Wise Productions']
+
+
+# The most average revenue was generate by a company that was just one time head production company. This seems more like a lucky punch than a success pattern.
+
+# ## Scatterplots of rating against various Features
+# In order see investigate if there corrletion between various factors and the rating of a movie, I will plot them against the rating and I will also calclutate the correlation coefficient to if there is a correlation/linear relation and if the correlation is negative or postive (Source for the analyzis: https://www.dummies.com/education/math/statistics/how-to-interpret-a-correlation-coefficient-r/)
+# 
+# 
+# What kind of properties are asccosiated with movies that have high ratings: Does the budget, the release month, the runtime, the genre or the revenue have a positive effect on the rating?
+# 
+# 
+
+# In[305]:
+
+
+# plotting the following columns/factors against revenue: budget, runtime, release month
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12,12))
+ax0, ax1, ax2, ax3 = axes.flatten()
+n_bins = 6
+plt.setp(axes.flat, ylabel='Average Rating')
+
+ax0.scatter(df.budget, df.revenue, n_bins)
+ax0.set(title = 'Correlation of Buget and Average Rating', xlabel='Budget')
+
+ax1.scatter(df.runtime, df.revenue, n_bins)
+ax1.set(title = 'Correlation of Runtime and Average Rating', xlabel='Runtime')
+
+ax2.scatter(df.vote_average, df.revenue, n_bins)
+ax2.set(title = 'Correlation of Average Revenue and Average Rating', xlabel='Average Rating')
+
+ax3.scatter(df.release_month, df.revenue, n_bins)
+ax3.set(title = 'Correlation of release_month and Average Rating', xlabel='Release Month')
+
+fig.tight_layout();
+
+
+# Now I will also calculate the correlation coefficient to support the visuals of the scatterplots
+
+# In[306]:
+
+
+# Correlation Coffiecent budget/Rating
+df['budget'].corr(df['vote_average'])
+
+
+# In[307]:
+
+
+# Correlation Coffiecent release month/Rating
+df['release_month'].corr(df['vote_average'])
+
+
+# In[308]:
+
+
+# Correlation Coffiecent runtime/Rating
+df['runtime'].corr(df['vote_average'])
+
+
+# In[309]:
+
+
+# Correlation Coffiecent revenue/Rating
+df['revenue'].corr(df['vote_average'])
+
+
+# #### Now I will interpretate the findings and if needed further investigate the data
+
+# ##### Correlation of Budget and Rating
+# The scatterplot shows no linear relation between the budget of a movie and its rating. This is supported by the correlation (0.03) cofficient for the two factors which also shows no linear relation.
+
+# ##### Correlation of Release month and Rating
+# The scatterplot shows no linear relation between the release month of a movie and its rating. This is supported by the correlation cofficient (0.12) for the two factors which also shows no linear relation. Further investigation seem pointless since there is a almost no linear relation at all.
+
+# ##### Correlation of Runtime and Rating
+# The scatterplot shows a week postiv linear relation between the runtime of a movie and its rating. This is supported by the correlation cofficient for the two factors (0.35). It would be also interesting to see which runtime generates the highest average rating
+
+# In[310]:
+
+
+# I will use the two dataframes high runtime and low runtime (which divides runtime into two dataframes: 
+# high runtime and low runtime and calculate the mean of the rating (vote_average) for each of the two df. 
+low_runtime_vote = df_runtime_low.vote_average.mean()
+low_runtime_vote
+
+
+# In[311]:
+
+
+high_runtime_vote = df_runtime_high.vote_average.mean()
+high_runtime_vote
+
+
+# In[312]:
+
+
+# I will now display the mean of the rating (vote_average) for each of the two dataframes 
+# in a bar chart (high runtime and low runtime)
+locations = [1, 2]
+heights = [low_runtime_vote, high_runtime_vote]
+labels = ['Low', 'High']
+plt.bar(locations, heights, tick_label=labels)
+plt.title('Average Rating by Runtime')
+plt.xlabel('Runtime')
+plt.ylabel('Average Rating');
+
+
+# The average rating is slighty higher for longer movies.
+
+# In[313]:
+
+
+df.vote_average.describe()
+
+
+# Since most of the ratings between 5.4 and 6.6, this is a bigger difference than I looks like in the bar chart
+
+# #### Correlation of Revenue and Rating
+# The scatterplot shows no linear relation between the revenue of a movie and its rating. This is supported by the correlation cofficient (0.26) for the two factors which also shows no linear relation. 
+# 
+# 
+# 
+
+# #### Summary
+
+# In summary, rhe scatterplots and the correlation coefficient shows that just runtime has a weka linear (postiv) relation with ratings of a movie.
+
+# #### But does the genre or production_companies effects the raintg? Which genre/ production company generates the best ratings?
+
+# In[314]:
+
+
+# average rating (vote_average) grouped by genre
+genre_rating_mean = df.groupby('new_genre').vote_average.mean()
+genre_rating_mean.idxmax()
+
+
+# In[315]:
+
+
+# plotting the average rating (vote_average)grouped by genre in a bar chart
+genre_rating_mean.plot(kind='bar', sort_columns=True)
+plt.title('Average Rating Per Genre')
+plt.xlabel('Genre')
+plt.ylabel('Rating');
+
+
+# The findings shows that Documentary Movies generate the highest ratings and that Horroe Movies generate the lowest revenue. This is quite interesting since Documentary is  the genres that generates the lowest revenue. This supports the finding that there is no linear relation between rating and revenue.
+
+# Which Production Company generates the best ratings?
+
+# In[91]:
+
+
+# average rating (vote_average) grouped by production companies
+max_rating = df.groupby('new_production_companies').vote_average.mean()
+max_rating.idxmax()
+
+
+# In[316]:
+
+
+df[df.new_production_companies == 'Talking Heads']
+
+
+# The most average rating was generate by a company that was just one time head production company. This seems againmore like a lucky punch than a success pattern.
+
+# ### Which year has the highest average in ratings? Does the ratings have changed over time: Have movies become better worse?
+
+# In[317]:
+
+
+# average rating (vote_average) grouped by release year
+year_average_rating = df.groupby('release_year').vote_average.mean();
+
+
+# In[318]:
+
+
+year_average_rating.plot()
+plt.title("Average Rating over time (per Year)")
+plt.xlabel("Year")
+plt.ylabel("Average Rating");
+
+
+# In[319]:
+
+
+year_average_rating.idxmax()
+
+
+# In[320]:
+
+
+year_average_rating.idxmin()
+
+
+# One can cleary see that the average rating has been going down after the peak in 1960.
+
+# <a id='conclusions'></a>
+# ## Conclusions
+# 
+# 
+# My main goal in this analyzis was to find was to find factors that couls predict the success of a movie in terms of revenue and rating.
+# 
+# The only two correlatons I found was a moderate uphill positive relation/ correlation between the budget of a movie and its revenue and a weak uphill positive relation/ correlation between the runtime and the rating of a movie. Meaning that the higher the budget, the higher the revenue. But its important to note that this a correlation and not a causation. It would be interesting to further investigate this in a regressions model to see if a higher bugdet leads to a higher revenue.
+# 
+# The release month, the runtime or the rating had no linear relation/ no correlation with the revenue. The budget, the release month or the revenue had no linear relation/ no correlation with the rating.
+# But the results show that movie with a runtime longer then 102 generated in average more revenue and better ratings and that the release of a movie in June generated the highest revenue and that the release in January generated the lowest revenue.
+# 
+# Furthermore, the findings shows that Adventure Movies generated the highest revenue and that Foreign Movies generated the lowest revenue, while Documentary Movies generated the highest ratings and Horror Movies generated the lowest revenue. 
+# One can also cleary see that the average rating has been going down after a peak in 1973. According to this, movies have been getting worse over time. But its hard to argue why this has happened or if movies really have become worse, maybe people have become more critical. 
+# 
+# The investigation of the prodcution companies didn't lead to valid findings.
+# 
+# In summary, the only correlation (the only factor that may predict the succes of a movie in terms of revenue and rating) I could find was a moderate postive correlation between the movie and the revenue.
+# 
+# Furthermore, its seems more successful to shoot shorter movies than longer movies, and that adventure movies generates the most revenue, while documentaries are best rated. 
+# 
+# As mentioned before, you need to further investigate the data in order to find causations and to make statistical valid statements. But my analyzis can be taken as first step to understand the relationship between various factors of a movie and its sucess. 
+# 
+# ## Limitations
+# As mentioned before, you need to further investigate the data in order to find causations and to make statistical valid statements about the dataset. The findings in this analyzis shows just correlations resp. observation that could be caused by other factors that were not included in the dataframe. The findings have more a desriptive charakter and can't not be used as general statements. Furthermore, the cleaned dateframe just includes 3807 movies and its not really clear if they are picked randomly. Therefore, the dataset can not be used as a representation for all movies. For further investigations one needs to pick a represenative sample of all movies.
+# Due to incomplete values in the dataset, I decided to emlinate all null values, which also limits the value of the findings. Moreover, I decided to just includ the first value of the list of genres and production companies for each movie and I also decided to not includ revenues and bugets that have the value 0 $.
+# This decisions alos limits the explanatory power of my findings. 
+# 
+# But my analyzis can be taken as first step to understand the relationship between various factors of a movie and its sucess.
+# 
+# 
+# 
+# 
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
