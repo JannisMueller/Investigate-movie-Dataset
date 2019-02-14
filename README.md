@@ -12,3 +12,7 @@ You can find the whole project in the Jupyter Notebook. I also added a html file
 Clone the repository and open the file in Jupyter Notebook
 
 `$ git clone https://github.com/JannisMueller/Investigate-movie-Dataset.git`
+
+#License 
+
+[MIT License](https://opensource.org/licenses/MIT)
