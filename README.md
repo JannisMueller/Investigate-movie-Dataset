@@ -13,6 +13,6 @@ Clone the repository and open the file in Jupyter Notebook
 
 `$ git clone https://github.com/JannisMueller/Investigate-movie-Dataset.git`
 
-#License 
+# License 
 
 [MIT License](https://opensource.org/licenses/MIT)
